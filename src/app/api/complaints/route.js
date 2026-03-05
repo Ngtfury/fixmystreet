@@ -15,10 +15,20 @@ export async function GET(request) {
             complaints = complaints.filter(c => c.citizenId === citizenId);
         }
 
-        // Sort by newest first
-        complaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        // Enrich with citizen details
+        const enrichedComplaints = complaints.map(complaint => {
+            const citizen = data.users.find(u => u.id === complaint.citizenId);
+            if (citizen) {
+                const { password, ...safeCitizenDetails } = citizen;
+                return { ...complaint, citizen: safeCitizenDetails };
+            }
+            return complaint;
+        });
 
-        return NextResponse.json({ complaints }, { status: 200 });
+        // Sort by newest first
+        enrichedComplaints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        return NextResponse.json({ complaints: enrichedComplaints }, { status: 200 });
     } catch (error) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

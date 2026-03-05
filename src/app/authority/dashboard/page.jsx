@@ -338,6 +338,22 @@ export default function AuthorityDashboard() {
                                                     >
                                                         <MapPin size={16} className="text-gray-400" /> {complaint.location}
                                                     </a>
+
+                                                    {complaint.citizen && (
+                                                        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                                                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Reporter Details</h4>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                                                <div><span className="text-gray-500">Name:</span> <span className="font-medium">{complaint.citizen.name}</span></div>
+                                                                <div><span className="text-gray-500">Phone:</span> <span className="font-medium">{complaint.citizen.mobileNumber || 'N/A'}</span></div>
+                                                                {complaint.citizen.wardNumber && (
+                                                                    <div><span className="text-gray-500">Ward:</span> <span className="font-medium">{complaint.citizen.wardNumber}</span></div>
+                                                                )}
+                                                                {complaint.citizen.localBodyName && (
+                                                                    <div><span className="text-gray-500">Local Body:</span> <span className="font-medium">{complaint.citizen.localBodyName}</span></div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Status Label */}
