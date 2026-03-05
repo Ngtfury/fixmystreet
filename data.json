@@ -1,4 +1,26 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": "e3424fdc-b8a3-4668-afb1-c444fe403e2d",
+      "name": "sreeram",
+      "email": "sreeramachandransmenon@gmail.com",
+      "password": "test123",
+      "role": "citizen",
+      "mobileNumber": "+916238643882",
+      "wardNumber": "6",
+      "wardMember": "shibu",
+      "panchayat": "wfwf",
+      "municipality": "wfwf"
+    },
+    {
+      "id": "1c2ebd55-da76-43d8-8baf-1b591c58d8d2",
+      "name": "root",
+      "email": "root@gmail.com",
+      "password": "test123",
+      "role": "authority",
+      "municipality": "efef",
+      "authorityType": "inspector"
+    }
+  ],
   "complaints": []
 }

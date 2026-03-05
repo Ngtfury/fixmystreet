@@ -4,7 +4,7 @@ import { readData } from '@/lib/db';
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { email, password } = body;
+        const { email, password, expectedRole } = body;
 
         if (!email || !password) {
             return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -15,6 +15,10 @@ export async function POST(request) {
 
         if (!user) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+        }
+
+        if (expectedRole && user.role !== expectedRole) {
+            return NextResponse.json({ error: `Please use the ${user.role} login portal instead.` }, { status: 403 });
         }
 
         // Omit password from response

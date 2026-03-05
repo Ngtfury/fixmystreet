@@ -5,14 +5,17 @@ import path from 'path';
 
 export async function DELETE(request) {
     try {
-        // 1. Reset data.json
-        const emptyData = {
-            users: [],
+        // 1. Reset data.json but keep users
+        const { readData, writeData } = await import('@/lib/db');
+        const currentData = readData();
+
+        const newData = {
+            users: currentData.users || [],
             complaints: []
         };
 
-        // Write empty arrays to the database
-        const success = writeData(emptyData);
+        // Write newData to the database
+        const success = writeData(newData);
         if (!success) {
             throw new Error("Failed to write to data.json");
         }
@@ -24,9 +27,13 @@ export async function DELETE(request) {
             const files = fs.readdirSync(uploadsDir);
 
             for (const file of files) {
-                // Skip .gitkeep or other hidden files if you want, but for a true flush we delete everything
+                // Skip .gitkeep or other hidden files
                 if (file !== '.gitkeep') {
-                    fs.unlinkSync(path.join(uploadsDir, file));
+                    try {
+                        fs.unlinkSync(path.join(uploadsDir, file));
+                    } catch (e) {
+                        console.error("Failed to delete file:", file, e);
+                    }
                 }
             }
         }

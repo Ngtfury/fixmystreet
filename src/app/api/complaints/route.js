@@ -31,13 +31,13 @@ export async function POST(request) {
         const category = formData.get('category');
         const description = formData.get('description');
         const location = formData.get('location'); // comma-separated lat/lng
-        const image = formData.get('image'); // File object
+        const mediaFiles = formData.getAll('media'); // Array of File objects
 
-        if (!citizenId || !category || !description || !location || !image) {
-            return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
+        if (!citizenId || !category || !description || !location || mediaFiles.length === 0) {
+            return NextResponse.json({ error: 'All fields and at least one media file are required' }, { status: 400 });
         }
 
-        // Save image
+        // Save media files
         const publicDir = path.join(process.cwd(), 'public');
         const uploadsDir = path.join(publicDir, 'uploads');
 
@@ -45,15 +45,20 @@ export async function POST(request) {
             fs.mkdirSync(uploadsDir, { recursive: true });
         }
 
-        const bytes = await image.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        // Sanitize filename to avoid weird characters
-        const safeFilename = image.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
-        const filename = `${uniqueSuffix}-${safeFilename}`;
-        const imagePath = path.join(uploadsDir, filename);
+        const mediaPaths = [];
 
-        fs.writeFileSync(imagePath, buffer);
+        for (const file of mediaFiles) {
+            const bytes = await file.arrayBuffer();
+            const buffer = Buffer.from(bytes);
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+            // Sanitize filename to avoid weird characters
+            const safeFilename = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+            const filename = `${uniqueSuffix}-${safeFilename}`;
+            const imagePath = path.join(uploadsDir, filename);
+
+            fs.writeFileSync(imagePath, buffer);
+            mediaPaths.push(`/uploads/${filename}`);
+        }
 
         const data = readData();
         const newComplaint = {
@@ -62,7 +67,7 @@ export async function POST(request) {
             category,
             description,
             location,
-            imagePath: `/uploads/${filename}`,
+            mediaPaths,
             status: 'Pending',
             createdAt: new Date().toISOString()
         };

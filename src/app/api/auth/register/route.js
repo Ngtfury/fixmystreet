@@ -5,10 +5,10 @@ import crypto from 'crypto';
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { name, email, password, role } = body;
+        const { name, email, password, role, ...extraFields } = body;
 
         if (!name || !email || !password || !role) {
-            return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
+            return NextResponse.json({ error: 'Core fields (name, email, password, role) are required' }, { status: 400 });
         }
 
         const data = readData();
@@ -22,7 +22,8 @@ export async function POST(request) {
             name,
             email,
             password, // In a real app, you would hash this
-            role // "citizen" or "authority"
+            role, // "citizen" or "authority"
+            ...extraFields
         };
 
         data.users.push(newUser);

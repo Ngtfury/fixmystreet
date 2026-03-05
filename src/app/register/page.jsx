@@ -8,7 +8,9 @@ export default function Register() {
         name: '',
         email: '',
         password: '',
-        role: 'citizen'
+        role: 'citizen',
+        localBodyType: '',
+        authorityType: ''
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -128,6 +130,72 @@ export default function Register() {
                                 Authority
                             </label>
                         </div>
+                    </div>
+
+                    {/* Conditional Fields based on Role */}
+                    <div className="pt-4 border-t border-gray-100 dark:border-gray-800/50 space-y-5 animate-in slide-in-from-top-2">
+                        {formData.role === 'citizen' ? (
+                            <>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Local Body Type</label>
+                                        <select name="localBodyType" className="input-field" onChange={handleChange} value={formData.localBodyType} required>
+                                            <option value="" disabled>Select Type...</option>
+                                            <option value="corporation">Municipal Corporation</option>
+                                            <option value="municipality">Municipality</option>
+                                            <option value="gram_panchayat">Gram Panchayat</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Name of Local Body</label>
+                                        <input type="text" name="localBodyName" className="input-field" onChange={handleChange} value={formData.localBodyName || ''} placeholder="e.g. City Corporation" required />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Ward Number</label>
+                                        <input type="text" name="wardNumber" className="input-field" onChange={handleChange} value={formData.wardNumber || ''} placeholder="e.g. 15" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Ward Member Name</label>
+                                        <input type="text" name="wardMember" className="input-field" onChange={handleChange} value={formData.wardMember || ''} placeholder="Member Name" required />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Full Residential Address</label>
+                                    <textarea name="address" className="input-field resize-none" rows="2" onChange={handleChange} value={formData.address || ''} placeholder="House No, Street, Landmark..." required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Mobile Number</label>
+                                    <input type="tel" name="mobileNumber" className="input-field" onChange={handleChange} value={formData.mobileNumber || ''} placeholder="+91..." required />
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Administered Local Body</label>
+                                    <input type="text" name="municipality" className="input-field" onChange={handleChange} value={formData.municipality || ''} placeholder="e.g. Central District Municipality" required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Authority Level / Role</label>
+                                    <select name="authorityType" className="input-field" onChange={handleChange} value={formData.authorityType} required>
+                                        <option value="" disabled>Select Role...</option>
+                                        <option value="inspector">Ward Inspector</option>
+                                        <option value="engineer">Municipal Engineer</option>
+                                        <option value="commissioner">Commissioner</option>
+                                        <option value="admin">System Admin</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Official Mobile Number</label>
+                                    <input type="tel" name="mobileNumber" className="input-field" onChange={handleChange} value={formData.mobileNumber || ''} placeholder="+91..." required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Staff / Employee ID</label>
+                                    <input type="text" name="employeeId" className="input-field" onChange={handleChange} value={formData.employeeId || ''} placeholder="e.g. EMP-12345" required />
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <button

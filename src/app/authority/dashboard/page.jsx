@@ -11,6 +11,15 @@ export default function AuthorityDashboard() {
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(null);
     const [isFlushing, setIsFlushing] = useState(false);
+    const [updateModalOpen, setUpdateModalOpen] = useState(false);
+    const [selectedComplaint, setSelectedComplaint] = useState(null);
+    const [newStatus, setNewStatus] = useState('');
+    const [proofImage, setProofImage] = useState(null);
+    const [proofImagePreview, setProofImagePreview] = useState(null);
+    const [selectedMedia, setSelectedMedia] = useState(null);
+
+    // For Authority Filtering by Ward/Municipality
+    const [locationFilter, setLocationFilter] = useState('All');
     const router = useRouter();
 
     useEffect(() => {
@@ -26,15 +35,27 @@ export default function AuthorityDashboard() {
         }
         setUser(parsedUser);
         fetchAllComplaints();
-    }, []);
+    }, [router]);
 
     useEffect(() => {
-        if (activeFilter === 'All') {
-            setFilteredComplaints(complaints);
-        } else {
-            setFilteredComplaints(complaints.filter(c => c.status === activeFilter));
+        let filtered = complaints;
+
+        if (activeFilter !== 'All') {
+            filtered = filtered.filter(c => c.status === activeFilter);
         }
-    }, [complaints, activeFilter]);
+
+        if (locationFilter !== 'All') {
+            filtered = filtered.filter(c => {
+                // Determine the citizen details from matching the citizenId with users DB?
+                // since we don't have users populated directly in complaints without a join,
+                // we'll filter by the complaint's 'location' string containing the filter for now
+                // Alternatively, we filter if user.municipality is in the text
+                return c.location.toLowerCase().includes(locationFilter.toLowerCase());
+            });
+        }
+
+        setFilteredComplaints(filtered);
+    }, [complaints, activeFilter, locationFilter]);
 
     const fetchAllComplaints = async () => {
         try {
@@ -50,16 +71,56 @@ export default function AuthorityDashboard() {
         }
     };
 
-    const updateStatus = async (id, newStatus) => {
-        setUpdating(id);
+    const openUpdateModal = (complaint) => {
+        setSelectedComplaint(complaint);
+        setNewStatus(complaint.status);
+        setProofImage(null);
+        setProofImagePreview(null);
+        setUpdateModalOpen(true);
+    };
+
+    const handleProofImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                alert("Image size should be less than 5MB");
+                return;
+            }
+            setProofImage(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setProofImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const submitStatusUpdate = async () => {
+        if (!selectedComplaint || !newStatus) return;
+
+        if (newStatus !== 'Pending' && !proofImage && newStatus !== selectedComplaint.status) {
+            alert('Please upload a proof image detailing the progress or resolution.');
+            return;
+        }
+
+        setUpdating(selectedComplaint.id);
+        setUpdateModalOpen(false);
+
         try {
-            const res = await fetch(`/api/complaints/${id}`, {
+            const formData = new FormData();
+            formData.append('status', newStatus);
+            if (proofImage) {
+                formData.append('proofImage', proofImage);
+            }
+
+            const res = await fetch(`/api/complaints/${selectedComplaint.id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus }),
+                body: formData,
             });
             if (res.ok) {
                 fetchAllComplaints();
+            } else {
+                alert("Failed to update status");
             }
         } catch (error) {
             console.error("Failed to update status:", error);
@@ -185,19 +246,36 @@ export default function AuthorityDashboard() {
                         Issue Management Feed
                     </h2>
 
-                    <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden self-stretch sm:self-auto">
-                        {['All', 'Pending', 'In Progress', 'Resolved'].map(filter => (
+                    <div className="flex flex-col sm:flex-row gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden self-stretch sm:self-auto">
+                        {/* Status Filters */}
+                        <div className="flex bg-white/50 dark:bg-black/20 p-1 rounded-lg">
+                            {['All', 'Pending', 'In Progress', 'Resolved'].map(filter => (
+                                <button
+                                    key={filter}
+                                    onClick={() => setActiveFilter(filter)}
+                                    className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all duration-300 ${activeFilter === filter
+                                        ? 'bg-white dark:bg-[#32253a] text-purple-700 dark:text-purple-300 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                                        }`}
+                                >
+                                    {filter}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Location Mock Filter */}
+                        {user?.municipality && (
                             <button
-                                key={filter}
-                                onClick={() => setActiveFilter(filter)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeFilter === filter
-                                    ? 'bg-white dark:bg-[#32253a] text-purple-700 dark:text-purple-300 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
-                                    }`}
+                                onClick={() => setLocationFilter(locationFilter === 'All' ? user.municipality : 'All')}
+                                className={`px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-300 flex items-center justify-center border
+                                    ${locationFilter !== 'All'
+                                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-200'
+                                        : 'bg-white/50 dark:bg-black/20 text-gray-600 border-transparent hover:bg-gray-200/50'}`}
                             >
-                                {filter}
+                                <MapPin size={14} className="mr-1" />
+                                {locationFilter !== 'All' ? `Filtered by ${user.municipality}` : `Filter by My District`}
                             </button>
-                        ))}
+                        )}
                     </div>
                 </div>
 
@@ -212,9 +290,31 @@ export default function AuthorityDashboard() {
                                 <div key={complaint.id} className="p-6 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors group">
                                     <div className="flex flex-col lg:flex-row gap-6">
 
-                                        {/* Image */}
-                                        <div className="w-full lg:w-48 h-32 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0 border border-gray-200 dark:border-gray-800">
-                                            <img src={complaint.imagePath} alt="Issue" className="w-full h-full object-cover" />
+                                        {/* Image Gallery */}
+                                        <div className="w-full lg:w-56 grid grid-cols-2 gap-2 h-32 lg:h-auto rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0 border border-gray-200 dark:border-gray-800 relative">
+                                            {complaint.mediaPaths && complaint.mediaPaths.length > 0 ? (
+                                                complaint.mediaPaths.slice(0, 4).map((media, idx) => (
+                                                    <div key={idx} className={`relative w-full h-full cursor-pointer hover:opacity-90 transition-opacity ${idx === 0 && complaint.mediaPaths.length % 2 !== 0 && complaint.mediaPaths.length < 4 ? 'col-span-2' : ''}`} onClick={() => setSelectedMedia({ url: media, type: media.endsWith('.mp4') || media.endsWith('.webm') ? 'video' : 'image' })}>
+                                                        {media.endsWith('.mp4') || media.endsWith('.webm') ? (
+                                                            <video src={media} className="w-full h-full object-cover pointer-events-none" muted />
+                                                        ) : (
+                                                            <img src={media} alt={`Issue ${idx}`} className="w-full h-full object-cover" />
+                                                        )}
+                                                        {idx === 3 && complaint.mediaPaths.length > 4 && (
+                                                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-lg">
+                                                                +{complaint.mediaPaths.length - 4}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <img
+                                                    src={complaint.imagePath}
+                                                    alt="Issue"
+                                                    className="w-full h-full object-cover col-span-2 cursor-pointer hover:opacity-90 transition-opacity"
+                                                    onClick={() => setSelectedMedia({ url: complaint.imagePath, type: 'image' })}
+                                                />
+                                            )}
                                         </div>
 
                                         {/* Content */}
@@ -253,32 +353,36 @@ export default function AuthorityDashboard() {
                                             </div>
 
                                             {/* Controls */}
-                                            <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                                                {complaint.feedbackRating ? (
-                                                    <div className="flex items-center gap-2 text-sm font-medium px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-full border border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-500">
-                                                        Citizen Rating: {complaint.feedbackRating}/5 Stars ★
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-sm text-gray-400 font-medium italic">
-                                                        {complaint.status === 'Resolved' ? 'Awaiting Citizen Rating' : 'Feedback not available yet'}
-                                                    </div>
-                                                )}
-
-                                                <div className="flex items-center gap-3 bg-white dark:bg-black/30 p-1.5 rounded-xl border border-gray-200 dark:border-gray-700">
-                                                    <span className="text-sm font-semibold pl-3 pr-2 text-gray-600 dark:text-gray-400">Update Action:</span>
-                                                    <select
-                                                        className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer pr-8 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                                        value={complaint.status}
-                                                        disabled={updating === complaint.id}
-                                                        onChange={(e) => updateStatus(complaint.id, e.target.value)}
-                                                    >
-                                                        <option value="Pending">Pending</option>
-                                                        <option value="In Progress">In Progress</option>
-                                                        <option value="Resolved">Resolved</option>
-                                                    </select>
-                                                    {updating === complaint.id && (
-                                                        <div className="w-4 h-4 ml-2 mr-3 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+                                            <div className="mt-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                                                <div className="flex-1">
+                                                    {complaint.feedbackRating ? (
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="flex items-center gap-2 text-sm font-medium px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-full border border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-500 w-fit">
+                                                                Citizen Rating: {complaint.feedbackRating}/5 Stars ★
+                                                            </div>
+                                                            {complaint.feedbackReview && (
+                                                                <div className="text-sm p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 italic border-l-4 border-yellow-400">
+                                                                    &quot;{complaint.feedbackReview}&quot;
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-sm text-gray-400 font-medium italic">
+                                                            {complaint.status === 'Resolved' ? 'Awaiting Citizen Rating & Review' : 'Feedback not available yet'}
+                                                        </div>
                                                     )}
+                                                </div>
+
+                                                <div className="flex items-center gap-3 bg-white dark:bg-black/30 p-2 rounded-xl border border-blue-200 dark:border-blue-900/50 shadow-sm shrink-0">
+                                                    <button
+                                                        onClick={() => openUpdateModal(complaint)}
+                                                        disabled={updating === complaint.id}
+                                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-all flexItems-center gap-2 disabled:opacity-50"
+                                                    >
+                                                        {updating === complaint.id ? (
+                                                            <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                                                        ) : 'Update Status / Add Proof'}
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -290,6 +394,106 @@ export default function AuthorityDashboard() {
                     )}
                 </div>
             </div>
+
+            {/* Update Status Modal */}
+            {updateModalOpen && selectedComplaint && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-[#1a1525] rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-800">
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-blue-50 dark:bg-blue-900/20">
+                            <h3 className="text-xl font-bold text-blue-800 dark:text-blue-300">Update Issue Status</h3>
+                            <button onClick={() => setUpdateModalOpen(false)} className="text-gray-500 hover:text-gray-800">
+                                <span className="text-2xl leading-none">&times;</span>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">New Status</label>
+                                <select
+                                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/40 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={newStatus}
+                                    onChange={(e) => setNewStatus(e.target.value)}
+                                >
+                                    <option value="Pending">Pending</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Resolved">Resolved</option>
+                                </select>
+                            </div>
+
+                            {newStatus !== 'Pending' && (
+                                <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                    <label className="block text-sm font-semibold">Upload Proof of Action <span className="text-red-500">*</span></label>
+                                    <p className="text-xs text-gray-500">Provide photographic evidence of the team working or the finalized resolution.</p>
+
+                                    <div className="relative border-2 border-dashed border-blue-300 dark:border-blue-700/50 rounded-2xl h-40 flex flex-col items-center justify-center bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-50 transition-colors">
+                                        {proofImagePreview ? (
+                                            <img src={proofImagePreview} alt="Proof Preview" className="w-full h-full object-cover rounded-xl p-1" />
+                                        ) : (
+                                            <div className="text-center p-4">
+                                                <div className="text-blue-500 mb-2">📸</div>
+                                                <span className="text-sm font-medium text-blue-700 dark:text-blue-400">Click to upload photo</span>
+                                            </div>
+                                        )}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleProofImageChange}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="pt-4 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setUpdateModalOpen(false)}
+                                    className="px-5 py-2.5 rounded-xl font-medium text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={submitStatusUpdate}
+                                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition-all active:scale-95"
+                                >
+                                    Save Verification
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Media Overlay Modal */}
+            {selectedMedia && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+                    onClick={() => setSelectedMedia(null)}
+                >
+                    <button
+                        className="absolute top-6 right-6 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full p-2 transition-all"
+                        onClick={() => setSelectedMedia(null)}
+                    >
+                        <span className="text-2xl leading-none block w-6 h-6 flex items-center justify-center">&times;</span>
+                    </button>
+
+                    <div className="max-w-5xl max-h-[90vh] w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                        {selectedMedia.type === 'video' ? (
+                            <video
+                                src={selectedMedia.url}
+                                className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
+                                controls
+                                autoPlay
+                            />
+                        ) : (
+                            <img
+                                src={selectedMedia.url}
+                                className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
+                                alt="Expanded view"
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
 
         </div>
     );

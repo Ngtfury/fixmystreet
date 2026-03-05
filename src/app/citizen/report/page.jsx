@@ -10,8 +10,8 @@ export default function ReportIssue() {
         description: '',
         location: ''
     });
-    const [image, setImage] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
+    const [mediaItems, setMediaItems] = useState([]);
+    const [mediaPreviews, setMediaPreviews] = useState([]);
     const fileInputRef = useRef(null);
 
     const [loading, setLoading] = useState(false);
@@ -39,26 +39,46 @@ export default function ReportIssue() {
         "Other"
     ];
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                setError("Image size should be less than 5MB");
-                return;
+    const handleMediaChange = (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            let validFiles = [];
+            let validPreviews = [];
+
+            for (const file of files) {
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit for combinations of videos/images
+                    setError("Each file should be less than 10MB");
+                    continue;
+                }
+                validFiles.push(file);
+
+                // Create preview
+                if (file.type.startsWith('image/')) {
+                    validPreviews.push({ type: 'image', url: URL.createObjectURL(file) });
+                } else if (file.type.startsWith('video/')) {
+                    validPreviews.push({ type: 'video', url: URL.createObjectURL(file) });
+                }
             }
-            setImage(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result);
-            };
-            reader.readAsDataURL(file);
+
+            setMediaItems(prev => [...prev, ...validFiles]);
+            setMediaPreviews(prev => [...prev, ...validPreviews]);
         }
     };
 
-    const removeImage = () => {
-        setImage(null);
-        setImagePreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
+    const removeMedia = (index) => {
+        const newItems = [...mediaItems];
+        newItems.splice(index, 1);
+        setMediaItems(newItems);
+
+        const newPreviews = [...mediaPreviews];
+        // Release object URL to avoid memory leaks
+        URL.revokeObjectURL(newPreviews[index].url);
+        newPreviews.splice(index, 1);
+        setMediaPreviews(newPreviews);
+
+        if (newItems.length === 0 && fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
     };
 
     const getLocation = () => {
@@ -92,8 +112,8 @@ export default function ReportIssue() {
         e.preventDefault();
         setError('');
 
-        if (!image) {
-            setError("Please upload an image of the issue");
+        if (mediaItems.length === 0) {
+            setError("Please upload at least one image or video of the issue");
             return;
         }
 
@@ -118,7 +138,10 @@ export default function ReportIssue() {
             submitData.append('category', formData.category);
             submitData.append('description', formData.description);
             submitData.append('location', formData.location);
-            submitData.append('image', image);
+
+            mediaItems.forEach(item => {
+                submitData.append('media', item);
+            });
 
             const res = await fetch('/api/complaints', {
                 method: 'POST',
@@ -221,47 +244,60 @@ export default function ReportIssue() {
                         </div>
 
                         <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold mb-2 ml-1 text-gray-800 dark:text-gray-200">Photographic Evidence</label>
-                            <div
-                                className={`relative border-2 border-dashed rounded-3xl h-full min-h-[300px] flex flex-col items-center justify-center transition-all duration-300
-                  ${imagePreview
-                                        ? 'border-purple-300 dark:border-purple-700 bg-black/5'
-                                        : 'border-gray-300 dark:border-gray-700 hover:border-purple-400 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 hover:shadow-inner'
-                                    }`}
-                            >
-                                {imagePreview ? (
-                                    <div className="absolute inset-0 p-2 group">
-                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded-2xl shadow-sm" />
-                                        <button
-                                            type="button"
-                                            onClick={removeImage}
-                                            className="absolute top-4 right-4 bg-white/90 dark:bg-black/80 backdrop-blur-md p-2 rounded-full text-red-500 hover:text-red-600 hover:bg-white transition-all shadow-md hover:scale-110 active:scale-95"
-                                            title="Remove image"
-                                        >
-                                            <X size={20} />
-                                        </button>
-                                        <div className="absolute bottom-4 inset-x-4 bg-black/50 backdrop-blur-md rounded-xl p-3 text-white text-xs text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            Click X to re-upload image
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="text-center p-8 pointer-events-none space-y-3">
-                                        <div className="w-20 h-20 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center mx-auto text-purple-500 shadow-inner">
-                                            <Camera size={40} />
+                            <label className="block text-sm font-semibold mb-2 ml-1 text-gray-800 dark:text-gray-200">
+                                Evidentiary Media (Photos/Videos)
+                            </label>
+                            <div className="flex flex-col gap-4">
+                                {/* Upload Button Area */}
+                                <div
+                                    className={`relative border-2 border-dashed rounded-3xl min-h-[160px] flex flex-col items-center justify-center transition-all duration-300 border-gray-300 dark:border-gray-700 hover:border-purple-400 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 hover:shadow-inner`}
+                                >
+                                    <div className="text-center p-6 pointer-events-none space-y-3">
+                                        <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center mx-auto text-purple-500 shadow-inner">
+                                            <Camera size={32} />
                                         </div>
                                         <div>
-                                            <p className="text-base font-medium text-gray-800 dark:text-gray-200">Click to upload photo</p>
-                                            <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                                            <p className="text-base font-medium text-gray-800 dark:text-gray-200">Click to upload files</p>
+                                            <p className="text-xs text-gray-500 mt-1">Images & Videos up to 10MB each</p>
                                         </div>
                                     </div>
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*,video/*"
+                                        ref={fileInputRef}
+                                        onChange={handleMediaChange}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    />
+                                </div>
+
+                                {/* Preview Gallery */}
+                                {mediaPreviews.length > 0 && (
+                                    <div className="grid grid-cols-2 gap-3 mt-4">
+                                        {mediaPreviews.map((preview, idx) => (
+                                            <div key={idx} className="relative aspect-square group rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm">
+                                                {preview.type === 'image' ? (
+                                                    <img src={preview.url} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <video src={preview.url} className="w-full h-full object-cover" muted playsInline />
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeMedia(idx)}
+                                                    className="absolute top-2 right-2 bg-white/90 dark:bg-black/80 backdrop-blur-md p-1.5 rounded-full text-red-500 hover:text-red-600 hover:bg-white transition-all shadow-md opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
+                                                    title="Remove media"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                                {preview.type === 'video' && (
+                                                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider">
+                                                        Video
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
-                                <input
-                                    type="file"
-                                    accept="image/jpeg, image/png, image/webp"
-                                    ref={fileInputRef}
-                                    onChange={handleImageChange}
-                                    className={`absolute inset-0 w-full h-full opacity-0 cursor-pointer ${imagePreview ? 'hidden' : ''}`}
-                                />
                             </div>
                         </div>
                     </div>

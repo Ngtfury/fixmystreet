@@ -43,7 +43,7 @@ export default function Home() {
               <Map size={24} />
             </div>
             <h3 className="font-bold text-xl">Pinpoint Accuracy</h3>
-            <p className="opacity-70 text-sm leading-relaxed">Use your device's GPS to log the exact location of the issue instantly.</p>
+            <p className="opacity-70 text-sm leading-relaxed">Use your device&apos;s GPS to log the exact location of the issue instantly.</p>
           </div>
           <div className="flex flex-col items-center text-center space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-fuchsia-100 dark:bg-fuchsia-900/40 flex items-center justify-center text-fuchsia-600 dark:text-fuchsia-400">

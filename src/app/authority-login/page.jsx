@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ShieldAlert } from 'lucide-react';
 
-export default function Login() {
+export default function AuthorityLogin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -19,7 +20,7 @@ export default function Login() {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, expectedRole: 'citizen' }),
+                body: JSON.stringify({ email, password, expectedRole: 'authority' }),
             });
 
             const data = await res.json();
@@ -30,11 +31,7 @@ export default function Login() {
 
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            if (data.user.role === 'citizen') {
-                router.push('/citizen/dashboard');
-            } else {
-                router.push('/authority/dashboard');
-            }
+            router.push('/authority/dashboard');
         } catch (err) {
             setError(err.message);
         } finally {
@@ -44,36 +41,39 @@ export default function Login() {
 
     return (
         <div className="flex justify-center items-center min-h-[70vh]">
-            <div className="glass-card w-full max-w-md p-8 animate-in fade-in zoom-in duration-500">
-                <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold mb-2 text-purple-600 dark:text-purple-400">Citizen Portal</h2>
-                    <p className="text-gray-500 dark:text-gray-400">Log in to manage your reports</p>
+            <div className="glass-card w-full max-w-md p-8 animate-in fade-in zoom-in duration-500 border-t-4 border-t-blue-500">
+                <div className="text-center mb-8 flex flex-col items-center">
+                    <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mb-4">
+                        <ShieldAlert size={32} />
+                    </div>
+                    <h2 className="text-3xl font-bold mb-2 text-blue-700 dark:text-blue-400">Authority Portal</h2>
+                    <p className="text-gray-500 dark:text-gray-400">Secure municipal access</p>
                 </div>
 
                 {error && (
-                    <div className="bg-red-100 text-red-700 p-3 rounded-xl mb-6 text-sm text-center">
+                    <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl mb-6 text-sm text-center">
                         {error}
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium mb-2">Email Address</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Official Email</label>
                         <input
                             type="email"
                             required
-                            className="input-field"
+                            className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="you@example.com"
+                            placeholder="admin@municipality.gov"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-2">Password</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
                         <input
                             type="password"
                             required
-                            className="input-field"
+                            className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-black/20 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••••"
@@ -83,20 +83,15 @@ export default function Login() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="btn-primary w-full py-3 mt-4 disabled:opacity-70"
+                        className="w-full py-3 mt-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-70"
                     >
-                        {loading ? 'Logging in...' : 'Log In'}
+                        {loading ? 'Authenticating...' : 'Secure Login'}
                     </button>
                 </form>
 
-                <p className="text-center mt-8 text-sm text-gray-600 dark:text-gray-400">
-                    Don&apos;t have an account? <Link href="/register" className="text-purple-600 font-medium hover:underline">Sign up</Link>
-                </p>
-
                 <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
-                    <p className="text-xs text-gray-500 mb-2">Are you a municipal official?</p>
-                    <Link href="/authority-login" className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">
-                        Go to Authority Portal →
+                    <Link href="/login" className="text-sm font-medium text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
+                        ← Back to Citizen Portal
                     </Link>
                 </div>
             </div>

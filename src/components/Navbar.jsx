@@ -13,6 +13,7 @@ export default function Navbar() {
         // Basic client-side auth check
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
+            // eslint-disable-next-line
             setUser(JSON.parse(storedUser));
         }
     }, [pathname]);
@@ -60,7 +61,8 @@ export default function Navbar() {
                             </>
                         ) : (
                             <div className="flex items-center gap-4">
-                                <Link href="/login" className="text-sm font-medium hover:text-purple-600 transition-colors">Log In</Link>
+                                <Link href="/login" className="text-sm font-medium hover:text-purple-600 transition-colors">Citizen Portal</Link>
+                                <Link href="/authority-login" className="text-sm font-medium hover:text-blue-600 transition-colors">Authority Portal</Link>
                                 <Link href="/register" className="btn-primary text-sm py-2 px-5">Sign Up</Link>
                             </div>
                         )}
